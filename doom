@@ -1,0 +1,3 @@
+#!/bin/sh
+
+/root/AlpineSH/doom-ascii -iwad /root/AlpineSH/doom1.wad
