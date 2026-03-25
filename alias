@@ -1,0 +1,3 @@
+#!/bin/sh
+
+/root/aclock/doom-ascii -iwad /root/aclock/doom1.wad
