@@ -10,7 +10,7 @@ else
 model="nvidia/nemotron-nano-12b-v2-vl"
 fi
 
-echo "answer=\$(wget -q -O - --header=\'Content-Type: application/json\' --post-data=\'{\"model\": \"$model\", \"messages\": [{\"role\": \"user\", \"content\": \"$prompt\"}]}\' https://watchllm.vercel.app/api/proxy)"
+#echo "answer=\$(wget -q -O - --header=\'Content-Type: application/json\' --post-data=\'{\"model\": \"$model\", \"messages\": [{\"role\": \"user\", \"content\": \"$prompt\"}]}\' https://watchllm.vercel.app/api/proxy)"
 
 answer=$(wget -q -O - --header="Content-Type: application/json" --post-data="{\"model\": \"$model\", \"messages\": [{\"role\": \"user\", \"content\": \"$prompt\"}]}" https://watchllm.vercel.app/api/proxy)
 
