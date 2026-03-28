@@ -1,3 +1,4 @@
+#!/bin/sh
 if [ -n "$1" ]; then
 prompt=$1
 else
