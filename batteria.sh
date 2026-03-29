@@ -4,6 +4,7 @@ echo ""
 echo ""
 echo ""
 echo -ne "\e[1A"
+led=0
 
 while true ; do
 
@@ -29,6 +30,16 @@ echo -ne "ਈ\e[41m█$B\e[0m"
 elif [ "$B" -lt 10 ]; then
 
 echo -ne "ਈ\e[41m██$B\e[0m"
+
+elif [ "$B" -lt 5 ]; then
+
+echo -ne "ਈ\e[41m██$B\e[0m"
+echo $led > /sys/class/leds/input0::capslock/brightness
+if [ $led -eq  0 ]; then
+led=1
+else
+led=0
+fi
 
 fi
 
