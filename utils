@@ -22,7 +22,7 @@ echo $0
 # Se l'argomento è un testo (non numero), lo aggiunge in coda come commento speciale
 if [ "$#" -gt 0 ] ; then
     sed -i "$ i $*" "$0"
-    echo "Saved at: $(( $(wc -l < "$0") - 33 ))"
+    echo "Saved at: $(( $(wc -l < "$0") - 34 ))"
     exit 0
 fi
 
