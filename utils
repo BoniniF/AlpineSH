@@ -30,7 +30,9 @@ tail -n +33 $0 | nl -v 0 | head -n -1
 
 : <<'Commento'
 
-mount -t ntfs-3g /dev/sda2 /mnt/hdd/ ; cd /mnt/hdd/Windows.old/Users/ColomBonini/me/
+apk add ntfs-3g
+mount -t ntfs-3g /dev/sda2 /mnt/hdd/
+cd /mnt/hdd/Windows.old/Users/ColomBonini/me/
 btop
 export MICRO_TRUECOLOR=1
 export TCELL_TRUECOLOR=1
