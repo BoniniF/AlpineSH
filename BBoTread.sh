@@ -34,11 +34,24 @@ prompt=$(echo "$prompt" | sed 's/^ *//')
 # =========================
 [ ! -f "$FILE" ] && echo "{}" > "$FILE"
 
-# Escape delle virgolette per JSON
-# FIX: doppio backslash b
+# Escape completo per JSON: gestisce \, ", newline, tab, \r
+# Usa awk perchC) sed non gestisce bene input multiriga su busybox/Alpine
+# ORDINE CRITICO: prima \ poi gli altri (altrimenti si doppio-escapano)
 escape() {
-    printf '%s' "$1" | sed 's/"/\\"/g'
+    printf '%s' "$1" | awk '
+        BEGIN { ORS="" }
+        NR > 1 { printf "\\n" }
+        {
+            gsub(/\\/, "\\\\")
+            gsub(/"/, "\\\"")
+            gsub(/\t/, "\\t")
+            gsub(/\r/, "\\r")
+            printf "%s", $0
+        }
+    '
 }
+
+last_run=""
 
 # =========================
 # LOOP (per recursive)
@@ -46,7 +59,7 @@ escape() {
 while :; do
     prompt_escaped=$(escape "$prompt")
 
-    system_msg='{"role":"system","content":"If you need to execute an operation, generate a script in sh (not bash). Output only code inside ```sh ... ```"}'
+    system_msg='{"role":"system","content":"just If you need to execute an operation, generate a script in sh (not bash) outputing code inside ```sh ... ``` so you get the output if you needed. don t abuse it and output text normally"}'
 
     # Recupera thread esistente per questo chat_id
     # FIX: \(...\) invece di (...) per POSIX sed
@@ -79,9 +92,10 @@ while :; do
 
     tmp=$(mktemp)
 
-    # Escape per il REPLACEMENT di sed: solo \ e & vanno escapati
-    # FIX: era 's/[/&|]/\&/g' che escapava caratteri sbagliati
-    escaped_thread=$(printf '%s' "$thread" | sed 's/[\\&]/\\&/g')
+    # Escape per il REPLACEMENT di sed: \, &, e | (delimitatore usato sotto)
+    # FIX: aggiunto | b
+
+    escaped_thread=$(printf '%s' "$thread" | sed 's/[\\&|]/\\&/g')
 
     if grep -q "\"$chat_id\"" "$FILE"; then
         sed "s|\"$chat_id\":\[[^]]*\]|\"$chat_id\":[ $escaped_thread ]|" "$FILE" > "$tmp"
@@ -94,23 +108,34 @@ while :; do
     # ESTRAI CODICE
     # =========================
     # FIX: pattern corretto per i fence markdown ```sh / ```bash
-    run=$(echo "$answer" | awk '
-        /```(sh|bash)/ { flag=1; next }
-        /```/          { flag=0 }
-        flag           { print }
-    ')
+run=$(printf '%s\n' "$answer" | awk '
+    /^```(sh|bash)[[:space:]]*$/ { flag=1; next }
+        /^```[[:space:]]*$/          { flag=0 }
+            flag && NF                   { print }
+            ')
 
     # Se non recursive o nessun codice trovato, esci
     [ "$recursive" -eq 0 ] && break
     [ -z "$run" ]          && break
 
-    echo ">>> Eseguo:"
-    echo "$run"
-    output=$(echo "$run" | sh 2>&1)
-    echo ">>> Output:"
-    echo "$output"
 
-    # Rimanda l'output come nuovo prompt; evita loop infinito
-    [ "$output" = "$prompt" ] && break
-    prompt="Output comando:\n$output"
+echo ">>> Eseguo:"
+echo "$run"
+output=$(sh -c "$run" 2>&1)
+echo ">>> Output:"
+echo "$output"
+
+# =========================
+# ANTI LOOP (QUI ESATTAMENTE)
+# =========================
+[ "$run" = "$last_run" ] && break
+[ "$output" = "$last_output" ] && break
+
+last_run="$run"
+last_output="$output"
+
+
+
+    # printf interpreta \n come vero newline b
+    prompt=$(printf 'Output comando:\n%s' "$output")
 done
