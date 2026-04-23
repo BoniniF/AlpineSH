@@ -1,62 +1,118 @@
-
 #!/bin/sh
 
 FILE="conversations.json"
-
-prompt="$*"
 model="nvidia/nemotron-nano-12b-v2-vl"
+
 chat_id="0"
+recursive=0
 
-# parsing --chat
-if [ "$1" = "--chat" ]; then
-    chat_id="$2"
-        shift 2
-            prompt="$*"
-            fi
+# =========================
+# PARSING ARGOMENTI
+# =========================
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --chat)
+            chat_id="$2"
+            shift 2
+            ;;
+        --recursive|-re)
+            recursive=1
+            shift
+            ;;
+        --model|-m)
+        	model="$2"
+        	shift 2
+        	;;     
+        *)
+            prompt="$prompt $1"
+            shift
+            ;;
+    esac
+done
 
-            # crea file se non esiste
-            [ ! -f "$FILE" ] && echo "{}" > "$FILE"
+prompt=$(echo "$prompt" | sed 's/^ *//')
 
-            # escape JSON
-            prompt_escaped=$(printf '%s' "$prompt" | sed 's/"/\\"/g')
+# =========================
+# INIT FILE
+# =========================
+[ ! -f "$FILE" ] && echo "{}" > "$FILE"
 
-            # prendi thread (solo contenuto tra [])
-            thread=$(sed -n "s/.*\"$chat_id\":\[\(.*\)\].*/\1/p" "$FILE")
+# escape JSON
+escape() {
+    printf '%s' "$1" | sed 's/"/\\"/g'
+}
 
-            # se vuoto
-            [ -z "$thread" ] && thread=""
+# =========================
+# LOOP (per recursive)
+# =========================
+while :; do
 
-            # aggiungi virgola se serve
-            if [ -n "$thread" ]; then
-                thread="$thread,"
-                fi
+    prompt_escaped=$(escape "$prompt")
 
-                # aggiungi nuovo messaggio
-                thread="$thread{\"role\":\"user\",\"content\":\"$prompt_escaped\"}"
+	system_msg='{"role":"system","content":"If you need to execute an operation, generate a script in sh (not bash). Output only code inside ```sh blocks."}'
 
-                # costruisci JSON
-                json="{\"model\":\"$model\",\"messages\":[ $thread ]}"
+    # recupera thread
+    thread=$(sed -n "s/.*\"$chat_id\":\[\(.*\)\].*/\1/p" "$FILE")
 
-                # richiesta
-                answer=$(wget -q -O - \
-                --header="Content-Type: application/json" \
-                --post-data="$json" \
-                https://watchllm.vercel.app/api/proxy)
+    [ -z "$thread" ] && thread=""
 
-                echo "$answer"
-                echo ""
+    if [ -n "$thread" ]; then
+        thread="$thread,"
+    fi
 
-                # estrai risposta (grezzo ma funziona col tuo proxy)
-                reply=$(echo "$answer" | sed 's/"/\\"/g')
+    thread="$thread{\"role\":\"user\",\"content\":\"$prompt_escaped\"}"
 
-                # aggiorna thread con assistant
-                thread="$thread,{\"role\":\"assistant\",\"content\":\"$reply\"}"
+	json="{\"model\":\"$model\",\"messages\":[ $system_msg, $thread ]}"
 
-                # salva file (overwrite semplice)
-                echo "{\"$chat_id\":[ $thread ]}" > "$FILE"
+    answer=$(wget -q -O - \
+        --header="Content-Type: application/json" \
+        --post-data="$json" \
+        https://watchllm.vercel.app/api/proxy)
 
-                # esegui codice
-                run=$(echo "$answer" | sed -n '/^```\(sh\|bash\)/,/^```/ { /^```/d; p; }')
-                echo "$run" | sh
+    echo "$answer"
+    echo ""
 
-                
+	content=$(echo "$answer" | sed -n 's/.*"content":"\([^"]*\)".*/\1/p')
+	reply=$(printf '%s' "$content" | sed 's/"/\\"/g')
+	
+    thread="$thread,{\"role\":\"assistant\",\"content\":\"$reply\"}"
+
+tmp=$(mktemp)
+
+escaped_thread=$(printf '%s' "$thread" | sed -e 's/[\/&|]/\\&/g')
+
+if grep -q "\"$chat_id\"" "$FILE"; then
+    sed "s|\"$chat_id\":\[[^]]*\]|\"$chat_id\":[ $escaped_thread ]|" "$FILE" > "$tmp"
+    else
+        sed "s|}|,\"$chat_id\":[ $escaped_thread ]}|" "$FILE" > "$tmp"
+        fi
+
+        mv "$tmp" "$FILE"
+
+        
+    # =========================
+    # ESTRAI CODICE
+    # =========================
+    run=$(echo "$answer" | awk '
+        /```(sh|bash)/ {flag=1; next}
+        /```/ {flag=0}
+        flag
+    ')
+
+    # se non recursive o niente codice b
+    [ "$recursive" -eq 0 ] && break
+    [ -z "$run" ] && break
+
+    echo ">>> Eseguo:"
+    echo "$run"
+
+    output=$(echo "$run" | sh 2>&1)
+
+    echo ">>> Output:"
+    echo "$output"
+
+    # rimanda output come nuovo prompt
+	[ "$output" = "$prompt" ] && break
+	prompt="Output comando:\n$output"
+
+done
