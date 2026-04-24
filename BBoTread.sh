@@ -97,12 +97,20 @@ while :; do
 
     escaped_thread=$(printf '%s' "$thread" | sed 's/[\\&|]/\\&/g')
 
-    if grep -q "\"$chat_id\"" "$FILE"; then
+if grep -q "\"$chat_id\"" "$FILE"; then
+    # chat già esistente → sostituisci il contenuto
         sed "s|\"$chat_id\":\[[^]]*\]|\"$chat_id\":[ $escaped_thread ]|" "$FILE" > "$tmp"
-    else
-        sed "s|}|,\"$chat_id\":[ $escaped_thread ]}|" "$FILE" > "$tmp"
-    fi
-    mv "$tmp" "$FILE"
+        else
+            if [ "$(tr -d '[:space:]' < "$FILE")" = "{}" ]; then
+                    # file vuoto → crea struttura valida da zero
+                            printf '{"%s":[ %s ]}\n' "$chat_id" "$thread" > "$tmp"
+                                else
+                                        # aggiungi nuova chat PRIMA della chiusura }
+                                                sed "s|}|,\"$chat_id\":[ $escaped_thread ]}|" "$FILE" > "$tmp"
+                                                    fi
+                                                    fi
+
+                                                    mv "$tmp" "$FILE"
 
     # =========================
     # ESTRAI CODICE
