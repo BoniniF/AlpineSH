@@ -1,6 +1,6 @@
 #!/bin/sh
 FILE="conversations.json"
-model="nvidia/nemotron-nano-12b-v2-vl"
+model="nvidia/nemotron-3-super-120b-a12b"
 chat_id="0"
 recursive=0
 
