@@ -44,4 +44,6 @@ git add .; git commit -m f; git push
 echo 1 > /sys/class/leds/input0::capslock/brightness
 rc-service wpa_supplicant stop
 cat /sys/class/thermal/thermal_zone0/temp
+eject /dev/sr0
+mount /dev/sda1 /mnt/tools/ ; mount /dev/mmcblk0 /mnt/sd/
 Commento
