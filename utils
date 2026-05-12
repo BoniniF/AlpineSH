@@ -3,7 +3,7 @@
 # Se l'argomento è un numero, cerca ed esegue la riga corrispondente
 if [[ "$1" =~ ^[0-9] ]]; then
     # Estrae la riga N, rimuove il prefisso "# SCR: " e la esegue
-riga=$(( $1 + 33 ))
+riga=$(( $1 + 38 ))
 cmd=$(sed -n "${riga}p" "$0" )
 
     if [ -z "$cmd" ]; then
@@ -18,21 +18,25 @@ if [ "$1" == "-LA" ]; then
 sed -i 'N;$!P;D' $0
 exit 0
 fi
+if [ "$1" = "-del" ]; then
+[[ "$2" =~ ^[0-9]+$ ]] || { echo "Error: -del requires a number"; exit 1; }
+sed -i "$(( $2 + 38 ))d" "$0"
+exit 0
+fi
 echo $0
 # Se l'argomento è un testo (non numero), lo aggiunge in coda come commento speciale
 if [ "$#" -gt 0 ] ; then
     sed -i "$ i $*" "$0"
-    echo "Saved at: $(( $(wc -l < "$0") - 34 ))"
+    echo "Saved at: $(( $(wc -l < "$0") - 39 ))"
     exit 0
 fi
 
-tail -n +33 $0 | nl -v 0 | head -n -1
+tail -n +38 $0 | nl -v 0 | head -n -1
 
 : <<'Commento'
 
 apk add ntfs-3g
 mount -t ntfs-3g /dev/sda2 /mnt/hdd/
-cd /mnt/hdd/Windows.old/Users/ColomBonini/me/
 btop
 export MICRO_TRUECOLOR=1
 export TCELL_TRUECOLOR=1
