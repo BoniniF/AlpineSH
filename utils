@@ -39,4 +39,5 @@ export TCELL_TRUECOLOR=1
 git add .; git commit -m f; git push 
 echo 1 > /sys/class/leds/input0::capslock/brightness
 rc-service wpa_supplicant stop
+cat /sys/class/thermal/thermal_zone0/temp
 Commento
