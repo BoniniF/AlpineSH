@@ -48,4 +48,6 @@ eject /dev/sr0
 mount /dev/sda1 /mnt/tools/ ; mount /dev/mmcblk0 /mnt/sd/
 mpv --vo=tct --really-quiet --profile=low-latency --untimed --vf=scale=320:-1 /dev/video0
 mpv --vo=tct --really-quiet --profile=low-latency --untimed --vf=scale=320:-1 av://v4l2:/dev/video2
+df -h #spazio impiegato
+cd me/scripts/sshbrowser && nohup ./bridge > /dev/null 2>&1 &
 Commento
